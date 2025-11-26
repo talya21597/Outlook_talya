@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת שליחת קורות חיים - Outlook Drafts</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📧 מערכת שליחת קורות חיים</h1>
+            <p class="subtitle">המערכת תיצור טיוטות מייל ב-Outlook המקומי שלך</p>
+        </header>
+
+        <div id="alertBox" class="alert" style="display: none;"></div>
+
+        <form id="emailForm" enctype="multipart/form-data">
+            <!-- נושא המייל -->
+            <div class="form-group">
+                <label for="subject">
+                    <span class="required">*</span> נושא המייל:
+                </label>
+                <input 
+                    type="text" 
+                    id="subject" 
+                    name="subject" 
+                    placeholder="לדוגמה: הצעת עבודה למפתח Full Stack"
+                    required
+                >
+            </div>
+
+            <!-- כתובות הנמענים -->
+            <div class="form-group">
+                <label for="recipients">
+                    <span class="required">*</span> כתובות נמענים:
+                    <small>(הפרידי בפסיקים)</small>
+                </label>
+                <textarea 
+                    id="recipients" 
+                    name="recipients" 
+                    rows="3"
+                    placeholder="לדוגמה: hr@company1.com, jobs@company2.com, hiring@company3.com"
+                    required
+                ></textarea>
+                <small class="helper-text">טיוטה נפרדת תיווצר עבור כל נמען</small>
+            </div>
+
+            <!-- גוף ההודעה -->
+            <div class="form-group">
+                <label for="body">
+                    <span class="required">*</span> גוף ההודעה:
+                </label>
+                <textarea 
+                    id="body" 
+                    name="body" 
+                    rows="8"
+                    placeholder="שלום רב,&#10;&#10;מצורף קורות חיים למשרה...&#10;&#10;בברכה,"
+                    required
+                ></textarea>
+            </div>
+
+            <!-- קובץ מצורף -->
+            <div class="form-group">
+                <label for="attachment">
+                    📎 קובץ מצורף:
+                    <small>(PDF, DOC, DOCX, TXT)</small>
+                </label>
+                <input 
+                    type="file" 
+                    id="attachment" 
+                    name="attachment"
+                    accept=".pdf,.doc,.docx,.txt"
+                >
+                <small class="helper-text" id="fileName"></small>
+            </div>
+
+            <!-- כפתור שליחה -->
+            <button type="submit" class="submit-btn" id="submitBtn">
+                <span id="btnText">🚀 פתח טיוטות ב-Outlook</span>
+                <span id="btnLoader" style="display: none;">⏳ יוצר טיוטות...</span>
+            </button>
+        </form>
+
+        <footer>
+            <p>💡 <strong>שימי לב:</strong> וודאי ש-Outlook פתוח לפני לחיצה על הכפתור</p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('emailForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoader = document.getElementById('btnLoader');
+        const alertBox = document.getElementById('alertBox');
+        const fileInput = document.getElementById('attachment');
+        const fileNameDisplay = document.getElementById('fileName');
+
+        // הצגת שם הקובץ שנבחר
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileNameDisplay.textContent = `נבחר: ${this.files[0].name}`;
+                fileNameDisplay.style.color = '#2ecc71';
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        });
+
+        // פונקציה להצגת התראות
+        function showAlert(message, type = 'success') {
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
+            
+            // גלילה להתראה
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // הסתרה אוטומטית אחרי 5 שניות
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+
+        // טיפול בשליחת הטופס
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // השבתת הכפתור
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'inline';
+            
+            // הכנת הנתונים
+            const formData = new FormData(form);
+            
+            try {
+                // שליחת הבקשה לשרת
+                const response = await fetch('/send', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    // איפוס הטופס
+                    form.reset();
+                    fileNameDisplay.textContent = '';
+                } else {
+                    showAlert(data.message, 'error');
+                }
+                
+            } catch (error) {
+                showAlert('שגיאת תקשורת עם השרת. בדקי שהשרת רץ.', 'error');
+                console.error('Error:', error);
+            } finally {
+                // החזרת הכפתור למצב רגיל
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
